@@ -18,6 +18,9 @@ dist-ssr
 # Virtual python environment
 .venv
 
+# Complied python files
+__pycache__/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
