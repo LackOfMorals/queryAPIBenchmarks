@@ -90,6 +90,8 @@ MAX_WORKERS=4
 
 ```
 
+_Note:_ When using an Aura DB, set the URL to use https and without the port number at the end. e.g `https://9957dik7.databases.neo4j.io`
+
 You can set these individually e.g `export NUM_REQUESTS=5` or copy and paste the above into a file called '.env' and save in the root of the installation folder, queryAPIBenchmarks
 
 ## Usage
