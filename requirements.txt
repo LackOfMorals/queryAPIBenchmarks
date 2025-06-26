@@ -1,0 +1,14 @@
+seaborn
+matplotlib
+click
+dotenv
+httpx[http2]
+tqdm
+texttable
+
+
+
+
+
+
+
