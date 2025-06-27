@@ -118,29 +118,34 @@ python queryAPIBenchmarks.py -t Sync --output-graph True
 
 ## Tests
 
-The current set of tests execute a single Cypher statement as a _managed transaction_.
+### Managed transaction tetsts
 
-- Obtain a transaction ID
-- Using the transaction ID, execute the Cypher statement
-- Commit the transaction
+Managed transactions are better suited for when multiple Cypher statements must be executed together to achieve an outcome. The following set of tests execute a single Cypher statement as a _managed transaction_ where the workflow is:-
 
-_Note:_ Managed transactions are better suited for when multiple Cypher statements must be executed together to achieve an outcome. The Query API also supports unmanaged transactions for single Cypher statements. These are still executed as a transaction with the Query API managing them.
+1. Obtain a transaction ID
+2. Using the transaction ID, execute the Cypher statement
+3. Commit the transaction
 
-### Sync
+- Sync
+  Repeatedly sends the Cypher statements one by one in a sequential fashion to Neo4j system with a new network connection being used for each. The slowest performing test.
 
-Repeatedly sends the Cypher statements one by one in a sequential fashion to Neo4j system with a new network connection being used for each. The slowest performing test.
+- SyncSessions
+  The difference between this test and the Sync one is with the network connection. SyncSessions re-uses the same network connection which elminates the overheard of establishing a connection for each test cycle. This should be quicker than Sync, particulary with a larger number of test runs.
 
-### SyncSessions
+- Threads
+  Uses a new connection for each test run but does many at the sametime using Python threads. The max number at once is determined by the MAX_WORKER environment variable which is set at 4. Should be quicker than SyncSessions.
 
-The difference between this test and the Sync one is with the network connection. SyncSessions re-uses the same network connection which elminates the overheard of establishing a connection for each test cycle. This should be quicker than Sync, particulary with a larger number of test runs.
+- ThreadsSessions
+  Combines the use of Threads and SyncSessions in a single test. Number of threads is set by the MAX_WORKER environment. Depending on circumstances, this can give the highest number of transactions per second.
 
-### Threads
+### Implicit transaction tests
 
-Uses a new connection for each test run but does many at the sametime using Python threads. The max number at once is determined by the MAX_WORKER environment variable which is set at 4. Should be quicker than SyncSessions.
+These are similar to the Managed transaction tests but they use implicit transations where a single Cypher statement is sent to the Query API. The Query API still executes this in a transaction which it manages.
 
-### ThreadsSessions
-
-Combines the use of Threads and SyncSessions in a single test. Number of threads is set by the MAX_WORKER environment. Depending on circumstances, this can give the highest number of transactions per second.
+- SyncImplicit
+- SyncSessionsImplicit
+- ThreadsImplicit
+- ThreadsSessionsImplicit
 
 ## FAQS
 
