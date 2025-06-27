@@ -157,3 +157,7 @@ There is some but it's not extensive...
 ### When using Threads or ThreadsSessions, I see error messages
 
 Likely caused when you use large values for the total number of test cycles. Lower the value of MAX_WORKERS which you can find in .env file at folder root. The default value is 4
+
+### When MAX_WORKER is increased and errors are shown, queryAPIBennchmarks appears to hang rather than exit
+
+Initial investigation suggests that the hang is due to waiting for each thread to exit before queryAPIBench itself exits. This is being further worked on to better manage this situation. Given that the errors are due to the value of MAX_WORKER, try using a lower value as a workaround.

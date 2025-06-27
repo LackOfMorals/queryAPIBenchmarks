@@ -20,6 +20,8 @@ dist-ssr
 
 # Complied python files
 __pycache__/
+*.__pycache__/
+
 
 # Editor directories and files
 .vscode/*

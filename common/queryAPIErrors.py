@@ -11,6 +11,7 @@ __email__ = 'jon.giffard@neo4j.com'
 __status__ = 'Alpha'
 
 # Generic / built in
+import sys
 
 # Owned
 from .customExceptions import APIException
@@ -35,22 +36,32 @@ def query_api_errors(response_errors: dict):
             match error_code:
                 case "Neo.ClientError.Database.DatabaseNotFound":
                     print(f"{error_entry['message']}")
+                    sys.exit(1)
 
                 case "Neo.ClientError.Security.Unauthorized":
                     print(f"{error_entry['message']}")
+                    sys.exit(1)
 
                 case "Neo.ClientError.Request.Invalid":
                     print(f"{error_entry['message']}")
+                    sys.exit(1)
+
+                case "Neo.TransientError.Request.ResourceExhaustion":
+                    print(f"{error_entry['message']}")
+                    sys.exit(1)
+
+                case "Neo.ClientError.Security.AuthenticationRateLimit":
+                    print(f"{error_entry['message']}")
+                    sys.exit(1)
 
                 case _:
                     print(f"Error from Query API: {error_entry}")
+                    sys.exit(1)
 
-        raise APIException(f"Query API returned errors: {response_errors}")
-
-    except Exception as e:
-        raise APIException(e)
+            raise APIException(error_entry['message'])
     
-    """
-    except ConnectionError as exc:
-        print(f"Connection error: {exc}")
-    """
+    
+    except Exception as e:
+            raise APIException(e) from e
+    
+
