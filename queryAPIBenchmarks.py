@@ -21,7 +21,7 @@ from dotenv import load_dotenv
 
 # Owned
 from benchmarks import (BenchmarkSync, BenchmarkSyncSessions, BenchmarkThreads,
-                        BenchmarkThreadsSessions)
+                        BenchmarkThreadsSessions, BenchmarkSyncImplicit, BenchmarkSyncSessionsImplicit,  BenchmarkThreadsImplicit, BenchmarkThreadsSessionsImplicit)
 from common.showResults import generate_graph, generate_table
 
 load_dotenv()
@@ -40,7 +40,11 @@ benchmark_test_map = {
     "Sync": BenchmarkSync,
     "SyncSessions": BenchmarkSyncSessions,
     "Threads": BenchmarkThreads,
-    "ThreadsSessions": BenchmarkThreadsSessions
+    "ThreadsSessions": BenchmarkThreadsSessions,
+    "SyncImplicit": BenchmarkSyncImplicit,
+    "SyncSessionsImplicit": BenchmarkSyncSessionsImplicit,
+    "ThreadsImplicit": BenchmarkThreadsImplicit,
+    "ThreadsSessionsImplicit": BenchmarkThreadsSessionsImplicit
 }
 
 @click.command()

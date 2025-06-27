@@ -21,9 +21,9 @@ from dotenv import load_dotenv
 from common import ProgressBar, TXrequest
 
 
-class BenchmarkThreads:
+class BenchmarkThreadsImplicit:
     """
-    Provides methods to execute Cypher statements against the Neo4j Query API using threads for benchmarking.
+    Provides methods to execute Cypher statement against the Neo4j Query API using threads and implicit transations for benchmarking.
     """
     @staticmethod
     def _TXThreads(tx_request: TXrequest, cypher: str):
@@ -37,16 +37,9 @@ class BenchmarkThreads:
 
         :return: - Nothing is returned
         """
-        tx_id:str = ""
-        tx_cluster_affinity:str = ""
-
-        tx_id, tx_cluster_affinity = tx_request.tx_request_id()
-
+     
         # In our transaction context, run the cypher statement
-        tx_request.tx_request_cypher(tx_id, cypher, tx_cluster_affinity)
-
-        # Commit the transaction
-        tx_request.tx_request_commit(tx_id, tx_cluster_affinity)
+        tx_request.tx_request_implicit(cypher)
 
         pass
 
@@ -68,6 +61,7 @@ class BenchmarkThreads:
 
         # Load the environment variable that sets the maximum number of workers
         load_dotenv()
+
         MAX_WORKERS = int(os.getenv('MAX_WORKERS', 4))
 
         # Progress bar
@@ -83,7 +77,7 @@ class BenchmarkThreads:
         # you'll need to tweak this to reach a table value.
         with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
 
-            futures = [executor.submit(BenchmarkThreads._TXThreads, tx_request, cypher) for i in range(number_tests)]
+            futures = [executor.submit(BenchmarkThreadsImplicit._TXThreads, tx_request, cypher) for i in range(number_tests)]
 
             for future in concurrent.futures.as_completed(futures):
                 try:

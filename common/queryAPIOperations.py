@@ -62,7 +62,7 @@ class TXrequest:
             if 'transaction' in response.json():
                 tx_id = response.json()['transaction']['id']
             else:
-                tx_id = None
+                tx_id = ""
 
             # Add tx_id and it's associated cluster affinity to our map to track them
             # for when an instance of this class is being shared amongst multiple threads
@@ -102,14 +102,16 @@ class TXrequest:
         :return: None
         """
 
+        query_headers =  {"Content-Type": "application/json", "Accept": "application/json"}
         query_cypher = {'statement': cypher }
+
+        print (f"cluster affinity len: {len(cluster_affinity)}")
 
         if len(cluster_affinity) > 0:
             # If we have a cluster affinity, we need to add it to the headers
             # This is used with Aura DBs to ensure the transaction stays with the same server
             query_headers =  {"Content-Type": "application/json", "Accept": "application/json", "neo4j-cluster-affinity": cluster_affinity}
-        else: 
-            query_headers =  {"Content-Type": "application/json", "Accept": "application/json"}
+
 
         try:
             # Make request to query api at url
@@ -146,14 +148,13 @@ class TXrequest:
         :return: None
         """
 
-        query_headers = {}
+        query_headers =  {"Content-Type": "application/json", "Accept": "application/json"}
 
         if len(cluster_affinity) > 0:
             # If we have a cluster affinity, we need to add it to the headers
             # This is used with Aura DBs to ensure the transaction stays with the same server
             query_headers =  {"Content-Type": "application/json", "Accept": "application/json", "neo4j-cluster-affinity": cluster_affinity}
-        else: 
-            query_headers =  {"Content-Type": "application/json", "Accept": "application/json"}
+
 
         try:
             # Make request to query api at url
@@ -180,6 +181,45 @@ class TXrequest:
             exit()
 
     pass
+
+    def tx_request_implicit(self, cypher: str):
+        """
+   
+        :param cypher -  the cypher statement to execute
+        :return: str - tx id as a string
+        """
+
+        query_cypher = {'statement': cypher}
+
+        query_headers =  {"Content-Type": "application/json", "Accept": "application/json"}
+
+        try:
+            # Make request to query api at url
+            response = httpx.post(f"{self._query_api}", headers=query_headers, json=query_cypher, auth=self._query_auth, timeout=5)
+
+            # We need to check for errors in the response
+            if 'errors' in response.json():
+                query_api_errors(response.json()['errors'])
+
+        except httpx.RequestError as exc:
+            print(f"Connection error {exc.request.url}")
+            exit()
+
+        except httpx.HTTPError as exc:
+            print(f"HTTP Error  {exc.request.url}")
+            exit()
+
+        except httpx.ConnectTimeout as exc:
+            print(f"Connection timed out {exc.request.url}")
+            exit()
+
+        except ConnectionError as exc:
+            print(f"Connection error")
+            exit()
+
+        pass
+
+
 
 
 class TXsession:
@@ -347,3 +387,40 @@ class TXsession:
 
     def __delete__(self):
         self._session.close()
+
+    def tx_session_implicit(self, cypher: str):
+            """
+            Runs the cypher statement within an implicit transaction
+
+            :param cypher -  the cypher statement to execute in the transaction
+            :return None
+            """
+
+            query_cypher = {'statement': cypher }
+            query_headers =  {"Content-Type": "application/json", "Accept": "application/json"}
+
+            try:
+                # Make request to query api
+                response = self._session.post(f"{self._query_api}", headers=query_headers, json=query_cypher, auth=self._query_auth, timeout=5)
+
+                # We need to check for errors in the response
+                if 'errors' in response.json():
+                    query_api_errors(response.json()['errors'])
+
+            except httpx.RequestError as exc:
+                print(f"Connection error {exc.request.url}")
+                exit()
+
+            except httpx.HTTPError as exc:
+                print(f"HTTP Error  {exc.request.url}")
+                exit()
+
+            except httpx.ConnectTimeout as exc:
+                print(f"Connection timed out {exc.request.url}")
+                exit()
+
+            except ConnectionError as exc:
+                print(f"Connection error")
+                exit()
+
+            pass
