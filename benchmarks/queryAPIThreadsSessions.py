@@ -52,7 +52,7 @@ class BenchmarkThreadsSessions:
 
 
     @staticmethod
-    def run(number_tests: int, cypher: str, url: str, usr: str, pwd:str, db: str):
+    def run(number_tests: int, cypher: str, url: str, usr: str, pwd:str, db: str, t_out: int, workers:int = 0, http2: bool = False ):
         """
          Repeats a cypher statement, neo4j_cyper, for the number of times set by num_tests to the Neo4j Query API
          at neo4j_url using Threads. The total time is returned.
@@ -65,15 +65,10 @@ class BenchmarkThreadsSessions:
          :return: total time taken
          """
 
-        # Load the environment variable that sets the maximum number of workers
-        load_dotenv()
-        MAX_WORKERS = int(os.getenv('MAX_WORKERS', 4))
-
-
         # Create an instance of TXSession as this triggers
         # the use of httpx client to allow us to re-use connections
         # We can use the same session across all of the threads
-        tx_session = TXsession(url, usr, pwd, db)
+        tx_session = TXsession(url, usr, pwd, db, t_out)
 
 
         # Progress bar
@@ -82,7 +77,7 @@ class BenchmarkThreadsSessions:
         # Starting time
         start_time = datetime.now()
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
             futures = [executor.submit(BenchmarkThreadsSessions._TXThreadsSessions, tx_session, cypher) for i in range(number_tests)]
             #concurrent.futures.wait(futures)
             for future in concurrent.futures.as_completed(futures):

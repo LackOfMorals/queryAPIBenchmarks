@@ -45,7 +45,7 @@ class BenchmarkThreadsImplicit:
 
 
     @staticmethod
-    def run(number_tests: int, cypher: str, url: str, usr: str, pwd:str, db: str):
+    def run(number_tests: int, cypher: str, url: str, usr: str, pwd:str, db: str, t_out: int, workers:int = 0, http2: bool = False ):
         """
          Repeats a cypher statement, neo4j_cyper, for the number of times set by num_tests to the Neo4j Query API
          at neo4j_url using Threads. The total time is returned.
@@ -58,24 +58,18 @@ class BenchmarkThreadsImplicit:
          :return: total time taken
          """
 
-
-        # Load the environment variable that sets the maximum number of workers
-        load_dotenv()
-
-        MAX_WORKERS = int(os.getenv('MAX_WORKERS', 4))
-
         # Progress bar
         tx_progress_bar = ProgressBar("TXThreads", number_tests)
 
         # Object to handle our requests
-        tx_request = TXrequest(url, usr, pwd, db)
+        tx_request = TXrequest(url, usr, pwd, db, t_out)
 
         start_time = datetime.now()
 
         # Be careful with the number of workers - bad things happen if this is too high
         # looks like we exhaust the number of connections, showing as hitting max retries
         # you'll need to tweak this to reach a table value.
-        with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
 
             futures = [executor.submit(BenchmarkThreadsImplicit._TXThreads, tx_request, cypher) for i in range(number_tests)]
 

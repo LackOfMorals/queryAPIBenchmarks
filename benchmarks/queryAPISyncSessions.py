@@ -19,7 +19,7 @@ from common import ProgressBar, TXsession
 
 class BenchmarkSyncSessions():
     @staticmethod
-    def run(number_tests: int, cypher: str, url: str, usr: str, pwd:str, db, http2: bool = False ):
+    def run(number_tests: int, cypher: str, url: str, usr: str, pwd:str, db, t_out: int, workers: int = 0, http2: bool = False):
         """
          Repeats a cypher statement, neo4j_cyper, for the number of times set by num_tests to the Neo4j Query API
          at neo4j_url.  The total time is returned.
@@ -37,7 +37,7 @@ class BenchmarkSyncSessions():
 
         # Create an instance of TXSession as this triggers
         # the use of httpx client to allow us to re-use connections
-        tx_session = TXsession(url, usr, pwd, db, http2)
+        tx_session = TXsession(url, usr, pwd, db, t_out, http2)
 
         # Progress bar
         tx_progress_bar = ProgressBar("TXSyncSessions", number_tests)

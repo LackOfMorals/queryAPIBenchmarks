@@ -21,7 +21,7 @@ class BenchmarkSyncImplicit:
     Class to run a benchmark by executing a Cypher statement multiple times using implicit transactions with the Neo4j Query API.
     """
     @staticmethod
-    def run(number_tests: int, cypher: str, url: str, usr: str, pwd:str, db: str, http2: bool = False  ):
+    def run(number_tests: int, cypher: str, url: str, usr: str, pwd:str, db: str, t_out: int, workers:int = 0, http2: bool = False  ):
         """
          Repeats a cypher statement, neo4j_cyper, for the number of times set by num_tests to the Neo4j Query API
          at neo4j_url.  The total time is returned.
@@ -39,7 +39,7 @@ class BenchmarkSyncImplicit:
         tx_progress_bar = ProgressBar("TXSync", number_tests)
 
         # Object to handle our requests
-        tx_request = TXrequest(url, usr, pwd, db)
+        tx_request = TXrequest(url, usr, pwd, db, t_out)
 
         # Set the start time
         start_time = datetime.now()

@@ -10,6 +10,9 @@ __maintainer__ = 'Jonathan Giffard'
 __email__ = 'jon.giffard@neo4j.com'
 __status__ = 'Alpha'
 
+import os
+
+import dotenv
 # Generic / built in
 import httpx
 
@@ -23,10 +26,60 @@ class TXrequest:
     cypher execution within a transaction, and transaction commit, with support for cluster affinity.
     """
 
-    def __init__(self, url: str, usr: str, pwd: str, db: str):
+    def __init__(self, url: str, usr: str, pwd: str, db: str, t_out:int ):
+        dotenv.load_dotenv() 
         self._query_api = f"{url}/db/{db}/query/v2"
         self._query_auth = httpx.BasicAuth(usr, pwd)
         self._query_db = db
+        self._timeout = t_out
+
+
+    def _make_request(self, url_path: str ="", cluster_affinity: str = "", cypher: str = "") -> httpx.Response:
+        # Makesd the request to Query API , send response back and deals with any errors
+
+        query_headers =  {"Content-Type": "application/json", "Accept": "application/json"}
+
+        if len(cypher) > 0:
+            query_cypher = {'statement': cypher}
+        else:
+            query_cypher = {}
+
+        if len(cluster_affinity) > 0:
+            # If we have a cluster affinity, we need to add it to the headers
+            # This is used with Aura DBs to ensure the transaction stays with the same server
+            query_headers =  {"Content-Type": "application/json", "Accept": "application/json", "neo4j-cluster-affinity": cluster_affinity}
+
+        try:
+            # Make request to query api at url
+            response = httpx.post(f"{self._query_api}{url_path}", headers=query_headers, auth=self._query_auth, json=query_cypher, timeout=self._timeout)
+            
+            # If this key is present in the response headers
+            # we are talking to aura and need to use this in further TX requests
+            # to ensure the TX stays with the initial server in a cluster
+            # Similar to sticky sessions
+            # Save as a property of the object
+
+            # We need to check for errors in the response
+            if 'errors' in response.json():
+                query_api_errors(response.json()['errors'])
+
+        except httpx.RequestError as exc:
+            print(f"Connection error {exc.request.url}")
+            exit()
+
+        except httpx.HTTPError as exc:
+            print(f"HTTP Error  {exc.request.url}")
+            exit()
+
+        except httpx.ConnectTimeout as exc:
+            print(f"Connection timed out {exc.request.url}")
+            exit()
+
+        except ConnectionError as exc:
+            print(f"Connection error")
+            exit()
+
+        return response
 
 
     def tx_request_id(self) -> tuple[str, str]:
@@ -41,21 +94,16 @@ class TXrequest:
         tx_id: str = ""
         tx_cluster_affinity: str = ""
 
-        query_headers =  {"Content-Type": "application/json", "Accept": "application/json"}
-
         try:
+            
             # Make request to query api at url
-            response = httpx.post(f"{self._query_api}/tx", headers=query_headers, auth=self._query_auth, timeout=5)
-
+            response = self._make_request("/tx")
+            
             # If this key is present in the response headers
             # we are talking to aura and need to use this in further TX requests
             # to ensure the TX stays with the initial server in a cluster
             # Similar to sticky sessions
             # Save as a property of the object
-
-            # We need to check for errors in the response
-            if 'errors' in response.json():
-                query_api_errors(response.json()['errors'])
 
             # Extract the transaction id.  This will be added to the end of the URI
             # to associate database operations with the transaction
@@ -71,22 +119,8 @@ class TXrequest:
             if 'neo4j-cluster-affinity' in response.headers:
                 tx_cluster_affinity = response.headers['neo4j-cluster-affinity']
 
-
-        except httpx.RequestError as exc:
-            print(f"Connection error {exc.request.url}")
-            exit()
-
-        except httpx.HTTPError as exc:
-            print(f"HTTP Error  {exc.request.url}")
-            exit()
-
-        except httpx.ConnectTimeout as exc:
-            print(f"Connection timed out {exc.request.url}")
-            exit()
-
-        except ConnectionError as exc:
-            print(f"Connection error")
-            exit()
+        except Exception as e:
+            print(f"Exception when obtaining a tx id  {e}")
 
         return tx_id, tx_cluster_affinity
 
@@ -102,39 +136,12 @@ class TXrequest:
         :return: None
         """
 
-        query_headers =  {"Content-Type": "application/json", "Accept": "application/json"}
-        query_cypher = {'statement': cypher }
-
-        print (f"cluster affinity len: {len(cluster_affinity)}")
-
-        if len(cluster_affinity) > 0:
-            # If we have a cluster affinity, we need to add it to the headers
-            # This is used with Aura DBs to ensure the transaction stays with the same server
-            query_headers =  {"Content-Type": "application/json", "Accept": "application/json", "neo4j-cluster-affinity": cluster_affinity}
-
-
         try:
             # Make request to query api at url
-            response = httpx.post(f"{self._query_api}/tx/{tx_id}", headers=query_headers, auth=self._query_auth, json=query_cypher, timeout=5)
+            response = self._make_request(f"/tx/{tx_id}", cluster_affinity, cypher)
 
-            # We need to check for errors in the response
-            if 'errors' in response.json():
-                query_api_errors(response.json()['errors'])
-
-        except httpx.RequestError as exc:
-            print(f"Connection error {exc.request.url}")
-            exit()
-
-        except httpx.HTTPError as exc:
-            print(f"HTTP Error  {exc.request.url}")
-            exit()
-
-        except httpx.ConnectTimeout as exc:
-            print(f"Connection timed out {exc.request.url}")
-            exit()
-
-        except ConnectionError as exc:
-            print(f"Connection error")
+        except Exception as e:
+            print(f"Error with Cypher request {e}")
             exit()
 
         pass
@@ -148,36 +155,12 @@ class TXrequest:
         :return: None
         """
 
-        query_headers =  {"Content-Type": "application/json", "Accept": "application/json"}
-
-        if len(cluster_affinity) > 0:
-            # If we have a cluster affinity, we need to add it to the headers
-            # This is used with Aura DBs to ensure the transaction stays with the same server
-            query_headers =  {"Content-Type": "application/json", "Accept": "application/json", "neo4j-cluster-affinity": cluster_affinity}
-
-
         try:
             # Make request to query api at url
-            response = httpx.post(f"{self._query_api}/tx/{tx_id}/commit", headers=query_headers, auth=self._query_auth, timeout=5)
+            esponse = self._make_request(f"/tx/{tx_id}/commit", cluster_affinity)
 
-            # We need to check for errors in the response
-            #if 'errors' in response.json():
-            #    query_api_errors(response.json()['errors'])
-
-        except httpx.RequestError as exc:
-            print(f"Connection error {exc.request.url}")
-            exit()
-
-        except httpx.HTTPError as exc:
-            print(f"HTTP Error  {exc.request.url}")
-            exit()
-
-        except httpx.ConnectTimeout as exc:
-            print(f"Connection timed out {exc.request.url}")
-            exit()
-
-        except ConnectionError as exc:
-            print("Connection error")
+        except Exception as e:
+            print(f"Error commiting tx {tx_id}:  {e}")
             exit()
 
     pass
@@ -189,13 +172,55 @@ class TXrequest:
         :return: str - tx id as a string
         """
 
-        query_cypher = {'statement': cypher}
+        try:
+            # Make request to query api at url
+            response = self._make_request("","",cypher)
+
+        except Exception as e:
+            print(f"Error with implicit tx {e}")
+
+        pass
+
+
+
+
+class TXsession:
+    """
+    Manages session-based transactions with the Neo4j Query API, supporting transaction creation,
+    cypher execution, and commit operations, with optional HTTP/2 and cluster affinity support.
+    """
+     
+    def __init__(self, url: str, usr: str, pwd: str, db: str, t_out: int, http2_support: bool = False):
+        self._session = httpx.Client(http2=http2_support)
+        self._query_api = f"{url}/db/{db}/query/v2"
+        self._query_auth = httpx.BasicAuth(usr, pwd)
+        self._timeout = t_out
+ 
+
+    def __del__(self):
+        self._session.close()
+        
+
+    def _make_session_request(self, url_path: str ="", cluster_affinity: str = "", cypher: str = "") -> httpx.Response:
+        """
+        Makes a session based request , handles any erorrs and returns the response
+        """
 
         query_headers =  {"Content-Type": "application/json", "Accept": "application/json"}
 
+        if len(cypher) > 0:
+            query_cypher = {'statement': cypher}
+        else:
+            query_cypher = {}
+        
+        if len(cluster_affinity) > 0:
+            # If we have a cluster affinity, we need to add it to the headers
+            # This is used with Aura DBs to ensure the transaction stays with the same server
+            query_headers =  {"Content-Type": "application/json", "Accept": "application/json", "neo4j-cluster-affinity": cluster_affinity}
+
         try:
             # Make request to query api at url
-            response = httpx.post(f"{self._query_api}", headers=query_headers, json=query_cypher, auth=self._query_auth, timeout=5)
+            response = self._session.post(f"{self._query_api}{url_path}", headers=query_headers, auth=self._query_auth, json=query_cypher, timeout=self._timeout)
 
             # We need to check for errors in the response
             if 'errors' in response.json():
@@ -217,27 +242,7 @@ class TXrequest:
             print(f"Connection error")
             exit()
 
-        pass
-
-
-
-
-class TXsession:
-    """
-    Manages session-based transactions with the Neo4j Query API, supporting transaction creation,
-    cypher execution, and commit operations, with optional HTTP/2 and cluster affinity support.
-    """
-     
-    def __init__(self, url: str, usr: str, pwd: str, db: str, http2_support:bool = False):
-        self._session = httpx.Client(http2=http2_support)
-        self._aura_cluster_affinity = ""
-        self._query_api = f"{url}/db/{db}/query/v2"
-        self._query_auth = httpx.BasicAuth(usr, pwd)
-     
-
-    def __del__(self):
-        self._session.close()
-
+        return response
      
     def tx_session_id(self) -> tuple[str, str]:
         """
@@ -250,16 +255,9 @@ class TXsession:
         tx_id = ""
         tx_cluster_affinity = ""
 
-
-        query_headers =  {"Content-Type": "application/json", "Accept": "application/json"}
-
         try:
             # Make request to query api at url
-            response = self._session.post(f"{self._query_api}/tx", headers=query_headers, auth=self._query_auth, timeout=5)
-
-            # We need to check for errors in the response
-            if 'errors' in response.json():
-                query_api_errors(response.json()['errors'])
+            response = self._make_session_request("/tx")
 
             # Extract the transaction id from the response.  This will be added to the end of the URI
             # to associate database operations with the transaction
@@ -275,20 +273,8 @@ class TXsession:
             if 'neo4j-cluster-affinity' in response.headers:
                 tx_cluster_affinity = response.headers['neo4j-cluster-affinity']
 
-        except httpx.RequestError as exc:
-            print(f"Connection error {exc.request.url}")
-            exit()
-
-        except httpx.HTTPError as exc:
-            print(f"HTTP Error  {exc.request.url}")
-            exit()
-
-        except httpx.ConnectTimeout as exc:
-            print(f"Connection timed out {exc.request.url}")
-            exit()
-
-        except ConnectionError as exc:
-            print(f"Connection error")
+        except Exception as e:
+            print(f"Exception when obtaining a tx id  {e}")  
             exit()
 
         return tx_id, tx_cluster_affinity
@@ -302,39 +288,13 @@ class TXsession:
         :param cypher -  the cypher statement to execute in the transaction
         :return None
         """
-
-        query_cypher = {'statement': cypher }
-
-        if len(cluster_affinity) > 0:
-            # If we have a cluster affinity, we need to add it to the headers
-            # This is used with Aura DBs to ensure the transaction stays with the same server
-            query_headers =  {"Content-Type": "application/json", "Accept": "application/json", "neo4j-cluster-affinity": cluster_affinity}
-        else: 
-            query_headers =  {"Content-Type": "application/json", "Accept": "application/json"}
-
-
+       
         try:
             # Make request to query api
-            response = self._session.post(f"{self._query_api}/tx/{tx_id}", headers=query_headers, json=query_cypher, auth=self._query_auth, timeout=5)
-
-            # We need to check for errors in the response
-            if 'errors' in response.json():
-                query_api_errors(response.json()['errors'])
-
-        except httpx.RequestError as exc:
-            print(f"Connection error {exc.request.url}")
-            exit()
-
-        except httpx.HTTPError as exc:
-            print(f"HTTP Error  {exc.request.url}")
-            exit()
-
-        except httpx.ConnectTimeout as exc:
-            print(f"Connection timed out {exc.request.url}")
-            exit()
-
-        except ConnectionError as exc:
-            print(f"Connection error")
+            response = self._make_session_request(f"/tx/{tx_id}", cluster_affinity, cypher)
+            
+        except Exception as e:
+            print(f"Error with Cypher request {e}")
             exit()
 
         pass
@@ -348,39 +308,19 @@ class TXsession:
 
         :return: None
         """
-
-        query_headers = {}
-
-        if len(cluster_affinity) > 0:
-            # If we have a cluster affinity, we need to add it to the headers
-            # This is used with Aura DBs to ensure the transaction stays with the same server
-            query_headers =  {"Content-Type": "application/json", "Accept": "application/json", "neo4j-cluster-affinity": cluster_affinity}
-        else: 
-            query_headers =  {"Content-Type": "application/json", "Accept": "application/json"}
              
 
         try:
             # Make request to query api at url
-            response = self._session.post(f"{self._query_api}/tx/{tx_id}/commit", headers=query_headers, auth=self._query_auth, timeout=5)
+            response = self._make_session_request(f"/tx/{tx_id}/commit", cluster_affinity)
+            
 
             # We need to check for errors in the response
             if 'errors' in response.json():
                 query_api_errors(response.json()['errors'])
 
-        except httpx.RequestError as exc:
-            print(f"Connection error {exc.request.url}")
-            exit()
-
-        except httpx.HTTPError as exc:
-            print(f"HTTP Error  {exc.request.url}")
-            exit()
-
-        except httpx.ConnectTimeout as exc:
-            print(f"Connection timed out {exc.request.url}")
-            exit()
-
-        except ConnectionError as exc:
-            print(f"Connection error")
+        except Exception as e:
+            print(f"Error commiting tx {tx_id}:  {e}")
             exit()
 
         pass
@@ -396,31 +336,12 @@ class TXsession:
             :return None
             """
 
-            query_cypher = {'statement': cypher }
-            query_headers =  {"Content-Type": "application/json", "Accept": "application/json"}
-
             try:
                 # Make request to query api
-                response = self._session.post(f"{self._query_api}", headers=query_headers, json=query_cypher, auth=self._query_auth, timeout=5)
+                response = self._make_session_request("","",cypher)
 
-                # We need to check for errors in the response
-                if 'errors' in response.json():
-                    query_api_errors(response.json()['errors'])
-
-            except httpx.RequestError as exc:
-                print(f"Connection error {exc.request.url}")
-                exit()
-
-            except httpx.HTTPError as exc:
-                print(f"HTTP Error  {exc.request.url}")
-                exit()
-
-            except httpx.ConnectTimeout as exc:
-                print(f"Connection timed out {exc.request.url}")
-                exit()
-
-            except ConnectionError as exc:
-                print(f"Connection error")
+            except Exception as e:
+                print(f"Error with implicit tx {e}")
                 exit()
 
             pass
