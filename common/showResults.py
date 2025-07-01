@@ -14,6 +14,8 @@ __status__ = 'Alpha'
 import seaborn as sns
 import matplotlib.pyplot as plt
 import texttable as tt
+import uuid
+
 
 
 def generate_graph(test_results:dict):
@@ -32,7 +34,15 @@ def generate_graph(test_results:dict):
     )
     plt.xticks(rotation=45, ha='right')
     plt.tight_layout()
-    plt.show()
+
+    # Save the image file and inform user of the filename
+    image_filename = f"{uuid.uuid4().hex}.png"
+
+    # Using bbox_inches='tight' makes sure that there is a min
+    # of whitespace around the image
+    plt.savefig(image_filename, bbox_inches='tight')
+    
+    print(f"\n Results graph saved as {image_filename}\n\n")
 
     pass
 
