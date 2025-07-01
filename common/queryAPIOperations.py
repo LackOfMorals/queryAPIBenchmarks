@@ -10,10 +10,10 @@ __maintainer__ = 'Jonathan Giffard'
 __email__ = 'jon.giffard@neo4j.com'
 __status__ = 'Alpha'
 
-import os
-
-import dotenv
 # Generic / built in
+import os
+import dotenv
+import logging
 import httpx
 
 # Owned
@@ -27,7 +27,10 @@ class TXrequest:
     """
 
     def __init__(self, url: str, usr: str, pwd: str, db: str, t_out:int ):
-        dotenv.load_dotenv() 
+        dotenv.load_dotenv()
+        # Configure logging
+        logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        self._logger = logging.getLogger(__name__)
         self._query_api = f"{url}/db/{db}/query/v2"
         self._query_auth = httpx.BasicAuth(usr, pwd)
         self._query_db = db
@@ -63,19 +66,23 @@ class TXrequest:
             if 'errors' in response.json():
                 query_api_errors(response.json()['errors'])
 
-        except httpx.RequestError as exc:
-            print(f"Connection error {exc.request.url}")
+        except httpx.RequestError as e:
+            self._logger.error(f"Request error: {str(e)}")
+            print(f"Connection error {e.request.url}")
             exit()
 
-        except httpx.HTTPError as exc:
-            print(f"HTTP Error  {exc.request.url}")
+        except httpx.HTTPError as e:
+            self._logger.error(f"HTTP error: {str(e)}")
+            print(f"HTTP Error  {e.request.url}")
             exit()
 
-        except httpx.ConnectTimeout as exc:
-            print(f"Connection timed out {exc.request.url}")
+        except httpx.ConnectTimeout as e:
+            self._logger.error(f"Connection timed out error: {str(e)}")
+            print(f"Connection timed out {e.request.url}")
             exit()
 
-        except ConnectionError as exc:
+        except ConnectionError as e:
+            self._logger.error(f"Connection error: {str(e)}")
             print(f"Connection error")
             exit()
 
@@ -191,6 +198,9 @@ class TXsession:
     """
      
     def __init__(self, url: str, usr: str, pwd: str, db: str, t_out: int, http2_support: bool = False):
+        # Configure logging
+        logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        self._logger = logging.getLogger(__name__)
         self._session = httpx.Client(http2=http2_support)
         self._query_api = f"{url}/db/{db}/query/v2"
         self._query_auth = httpx.BasicAuth(usr, pwd)
@@ -226,21 +236,27 @@ class TXsession:
             if 'errors' in response.json():
                 query_api_errors(response.json()['errors'])
 
-        except httpx.RequestError as exc:
-            print(f"Connection error {exc.request.url}")
+
+        except httpx.RequestError as e:
+            self._logger.error(f"Request error: {str(e)}")
+            print(f"Connection error {e.request.url}")
             exit()
 
-        except httpx.HTTPError as exc:
-            print(f"HTTP Error  {exc.request.url}")
+        except httpx.HTTPError as e:
+            self._logger.error(f"HTTP error: {str(e)}")
+            print(f"HTTP Error  {e.request.url}")
             exit()
 
-        except httpx.ConnectTimeout as exc:
-            print(f"Connection timed out {exc.request.url}")
+        except httpx.ConnectTimeout as e:
+            self._logger.error(f"Connection timed out error: {str(e)}")
+            print(f"Connection timed out {e.request.url}")
             exit()
 
-        except ConnectionError as exc:
+        except ConnectionError as e:
+            self._logger.error(f"Connection error: {str(e)}")
             print(f"Connection error")
             exit()
+
 
         return response
      

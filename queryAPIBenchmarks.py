@@ -12,12 +12,13 @@ __email__ = 'jon.giffard@neo4j.com'
 __status__ = 'Alpha'
 
 
+# Generic / built in
 import os
 from datetime import datetime, timedelta
-
-# Generic / built in
+import logging
 import click
 from dotenv import load_dotenv
+
 
 # Owned
 from benchmarks import (BenchmarkSync, BenchmarkSyncImplicit,
@@ -26,6 +27,12 @@ from benchmarks import (BenchmarkSync, BenchmarkSyncImplicit,
                         BenchmarkThreadsSessions,
                         BenchmarkThreadsSessionsImplicit)
 from common.showResults import generate_graph, generate_table
+
+
+# Configure logging
+logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
 
 load_dotenv()
 
