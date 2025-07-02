@@ -11,14 +11,11 @@ __email__ = 'jon.giffard@neo4j.com'
 __status__ = 'Dev'
 
 import concurrent.futures
-import os
 # Generic / built in
 from datetime import datetime, timedelta
 
-from dotenv import load_dotenv
-
 # Owned
-from common import ProgressBar, TXsession
+from queryAPIBenchmarks.common import ProgressBar, TXsession
 
 
 class BenchmarkThreadsSessions:

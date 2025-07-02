@@ -10,38 +10,33 @@ __maintainer__ = 'Jonathan Giffard'
 __email__ = 'jon.giffard@neo4j.com'
 __status__ = 'Dev'
 
+# Generic/Built-in
 import concurrent.futures
-import os
-# Generic / built in
 from datetime import datetime, timedelta
 
-from dotenv import load_dotenv
-
 # Owned
-from common import ProgressBar, TXsession
+from queryAPIBenchmarks.common import ProgressBar, TXrequest
 
 
-class BenchmarkThreadsSessionsImplicit:
+class BenchmarkThreadsImplicit:
     """
-    Provides methods to benchmark Neo4j Query API performance using threads and sessions.
+    Provides methods to execute Cypher statement against the Neo4j Query API using threads and implicit transations for benchmarking.
     """
     @staticmethod
-    def _TXThreadsSessions(tx_session: TXsession, cypher: str):
+    def _TXThreads(tx_request: TXrequest, cypher: str):
         """
-          PRIVATE
+        PRIVATE
 
-          Executes the supplied Cypher statement. Uses Sessions
+        Executes the supplied Cypher statement in a managed TX
 
-          :param cypher - the cypher statement to run
-          :param url - the URL of the Neo4j Query API
-          :param usr - the user account to use
-          :param pwd  - the password of the user account
-          :return: - Nothing is returned
+        :param tx_request - an instance of the TXRequest class
+        :param cypher - the cypher statement to run
+
+        :return: - Nothing is returned
         """
-
-        # run the transaction 
-        tx_session.tx_session_implicit(cypher)
-
+     
+        # In our transaction context, run the cypher statement
+        tx_request.tx_request_implicit(cypher)
 
         pass
 
@@ -60,28 +55,28 @@ class BenchmarkThreadsSessionsImplicit:
          :return: total time taken
          """
 
-        # Create an instance of TXSession as this triggers
-        # the use of httpx client to allow us to re-use connections
-        # We can use the same session across all of the threads
-        tx_session = TXsession(url, usr, pwd, db, t_out)
-
-
         # Progress bar
-        tx_progress_bar = ProgressBar("TXThreadsSessions", number_tests)
+        tx_progress_bar = ProgressBar("TXThreads", number_tests)
 
-        # Starting time
+        # Object to handle our requests
+        tx_request = TXrequest(url, usr, pwd, db, t_out)
+
         start_time = datetime.now()
 
+        # Be careful with the number of workers - bad things happen if this is too high
+        # looks like we exhaust the number of connections, showing as hitting max retries
+        # you'll need to tweak this to reach a table value.
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
-            futures = [executor.submit(BenchmarkThreadsSessionsImplicit._TXThreadsSessions, tx_session, cypher) for i in range(number_tests)]
-            #concurrent.futures.wait(futures)
+
+            futures = [executor.submit(BenchmarkThreadsImplicit._TXThreads, tx_request, cypher) for i in range(number_tests)]
+
             for future in concurrent.futures.as_completed(futures):
                 try:
-                    result = future.result()  # Retrieve result or raise an exception
-                    tx_progress_bar.add_progress_entry()  # thread has finished, so increment the progress bar
+                    result = future.result()  # Retrieve result from a thread or raise an exception
+                    tx_progress_bar.add_progress_entry() # thread has finished, so increment the progress bar
                 except Exception as e:
                     print(f"Task raised an exception: {e}")
-                    raise 
+                    raise
 
         # Destroy progress bar object
         # Make sure to do this to avoid the console
@@ -89,10 +84,11 @@ class BenchmarkThreadsSessionsImplicit:
         # when something else is printed to the screen
         del tx_progress_bar
 
-        # Destroy the session object
-        del tx_session
+        # Desstroy our object that was doing the request work
+        del tx_request
 
         end_time = datetime.now()
+
         total_time: timedelta = end_time - start_time
 
         return total_time.total_seconds()

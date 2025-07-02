@@ -12,22 +12,25 @@ __email__ = 'jon.giffard@neo4j.com'
 __status__ = 'Alpha'
 
 
+import logging
 # Generic / built in
 import os
-from datetime import datetime, timedelta
-import logging
+from datetime import timedelta
+
 import click
 from dotenv import load_dotenv
 
-
 # Owned
-from benchmarks import (BenchmarkSync, BenchmarkSyncImplicit,
-                        BenchmarkSyncSessions, BenchmarkSyncSessionsImplicit,
-                        BenchmarkThreads, BenchmarkThreadsImplicit,
-                        BenchmarkThreadsSessions,
-                        BenchmarkThreadsSessionsImplicit)
-from common.showResults import generate_graph, generate_table
-
+from queryAPIBenchmarks.benchmarks import (BenchmarkSync,
+                                           BenchmarkSyncImplicit,
+                                           BenchmarkSyncSessions,
+                                           BenchmarkSyncSessionsImplicit,
+                                           BenchmarkThreads,
+                                           BenchmarkThreadsImplicit,
+                                           BenchmarkThreadsSessions,
+                                           BenchmarkThreadsSessionsImplicit)
+from queryAPIBenchmarks.common.showResults import (generate_graph,
+                                                   generate_table)
 
 # Configure logging
 logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')

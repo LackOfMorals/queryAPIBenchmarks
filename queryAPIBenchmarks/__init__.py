@@ -1,0 +1,1 @@
+from queryAPIBenchmarks.version import __version__

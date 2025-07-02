@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
 
 __author__ = 'Jonathan Giffard'
 __copyright__ = 'Copyright 2025, Neo4j'
@@ -13,47 +12,44 @@ __status__ = 'Alpha'
 # Generic / built in
 from datetime import datetime, timedelta
 
-
 # Owned
-from common import ProgressBar, TXsession
+from queryAPIBenchmarks.common import ProgressBar, TXrequest
 
-class BenchmarkSyncSessions():
+
+class BenchmarkSyncImplicit:
+    """
+    Class to run a benchmark by executing a Cypher statement multiple times using implicit transactions with the Neo4j Query API.
+    """
     @staticmethod
-    def run(number_tests: int, cypher: str, url: str, usr: str, pwd:str, db, t_out: int, workers: int = 0, http2: bool = False):
+    def run(number_tests: int, cypher: str, url: str, usr: str, pwd:str, db: str, t_out: int, workers:int = 0, http2: bool = False  ):
         """
          Repeats a cypher statement, neo4j_cyper, for the number of times set by num_tests to the Neo4j Query API
          at neo4j_url.  The total time is returned.
-
-         Uses Sessions so that requests share a TCP connection vs creating a connection for each request
 
          :param cypher - the cypher statement to run
          :param number_tests  - the number of times to execute the test
          :param url - the URL of the Neo4j Query API
          :param usr - the user account to use
          :param pwd  - the password of the user account
-         :param http2 - request to use http2
+         :param http2 - ( optional ) request to use http2 protocol.
          :return: total time taken
          """
 
-        # Create an instance of TXSession as this triggers
-        # the use of httpx client to allow us to re-use connections
-        tx_session = TXsession(url, usr, pwd, db, t_out, http2)
-
         # Progress bar
-        tx_progress_bar = ProgressBar("TXSyncSessions", number_tests)
+        tx_progress_bar = ProgressBar("TXSync", number_tests)
+
+        # Object to handle our requests
+        tx_request = TXrequest(url, usr, pwd, db, t_out)
 
         # Set the start time
         start_time = datetime.now()
 
+        tx_id: str = ""
+        tx_affinity: str = ""
+
         for _ in range(number_tests):
-            # Begin our transaction
-            tx_id, tx_cluster_affinity = tx_session.tx_session_id()
-
-            # In our transaction context, create a movie
-            tx_session.tx_session_cypher(tx_id, cypher, tx_cluster_affinity)
-
-            # Commit the transaction
-            tx_session.tx_session_commit(tx_id, tx_cluster_affinity)
+            # Do the implicit transaction with the cypher statement
+            tx_request.tx_request_implicit(cypher)
 
             # Update progress bar
             tx_progress_bar.add_progress_entry()
@@ -65,8 +61,8 @@ class BenchmarkSyncSessions():
         del tx_progress_bar
 
 
-        # Destroy tx_session so we can free up the connection
-        del tx_session
+        # destory the object we used to handle requests
+        del tx_request
 
         # Set the end time
         end_time = datetime.now()
@@ -76,6 +72,3 @@ class BenchmarkSyncSessions():
 
 
         return total_time.total_seconds()
-
-
-
