@@ -12,13 +12,10 @@ __status__ = 'Dev'
 
 # Generic/Built-in
 import concurrent.futures
-import os
 from datetime import datetime, timedelta
 
-from dotenv import load_dotenv
-
 # Owned
-from common import ProgressBar, TXrequest
+from queryAPIBenchmarks.common import ProgressBar, TXrequest
 
 
 class BenchmarkThreads:
